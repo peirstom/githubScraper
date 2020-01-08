@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Retrieve GitHub Data</title>
+</head>
+
+<body>
+    <button id='btnrepos'>Retrieve top 1000 Repositories!</button>
+    <button id='btnCommits'>Get and Write Metrics from Repos to CSV</button>
+    <button onclick="writeRepositoryData()">Download CSV</button>
+    <script>
+        const btnrepos = document.getElementById("btnrepos")
+        btnrepos.addEventListener("click", getrepos)
+        const btnCommits = document.getElementById("btnCommits")
+        btnCommits.addEventListener("click", getData)
+
+        const username = "###"; // fill in username
+        const pw = "###"; // fill in pasword
+
+        const headers = {
+            "Accept": ["application/vnd.github.cloak-preview", "application/vnd.github.mercy-preview+json",
+                "application/vnd.github.v3+json"
+            ],
+            "Authorization": `Basic ${btoa(`${username}:${pw}`)}`
+        }
+        const options = {
+            "method": "GET",
+            "headers": headers
+        }
+        var repos = [];
+        const dataRows = ["Language", "Repository Name", "URL", "Description", "Stars", "Topics", "Commits 2019",
+            "Active Contributors"
+        ];
+
+        async function getrepos() {
+            for (i = 1; i <= 10; i++) {
+                const url_repo =
+                    "https://api.github.com/search/repositories?q=language:Java&sort=stars&order=desc&per_page=100&page=" +
+                    i; //change this depending on the language: Python, Java, R, Matlab
+                const response = await fetch(url_repo, options)
+                const result = await response.json()
+                if (result && result.items) {
+                    repos = repos.concat(result.items)
+                }
+            }
+            for (i = 1; i <= 10; i++) {
+                const url_repo =
+                    "https://api.github.com/search/repositories?q=language:Python&sort=stars&order=desc&per_page=100&page=" +
+                    i; //change this depending on the language: Python, Java, R, Matlab
+                const response = await fetch(url_repo, options)
+                const result = await response.json()
+                if (result && result.items) {
+                    repos = repos.concat(result.items)
+                }
+            }
+            for (i = 1; i <= 10; i++) {
+                const url_repo =
+                    "https://api.github.com/search/repositories?q=language:R&sort=stars&order=desc&per_page=100&page=" +
+                    i; //change this depending on the language: Python, Java, R, Matlab
+                const response = await fetch(url_repo, options)
+                const result = await response.json()
+                if (result && result.items) {
+                    repos = repos.concat(result.items)
+                }
+            }
+            for (i = 1; i <= 10; i++) {
+                const url_repo =
+                    "https://api.github.com/search/repositories?q=language:Matlab&sort=stars&order=desc&per_page=100&page=" +
+                    i; //change this depending on the language: Python, Java, R, Matlab
+                const response = await fetch(url_repo, options)
+                const result = await response.json()
+                if (result && result.items) {
+                    repos = repos.concat(result.items)
+                }
+            }
+            console.log("Repositories retrieved: " + repos.length + ", Ready to get and write metrics.");
+        }
+        var repo = 0;
+        var contributors = [];
+        async function getData() {
+            console.log(repo);
+            const repository = repos[repo];
+            const repoName = repository.full_name;
+            const repositoryName = repository.name;
+            const repositoryDescription = repository.description ? repository.description.replace(
+                /[^a-zA-Z ]/g,
+                "") : "";
+            const repositoryLanguage = repository.language;
+            const repositoryURL = repository.html_url;
+            const repositoryStars = repository.stargazers_count
+            const repositoryTopics = repository.topics;
+            var commits2019 = null;
+            var repositoryActiveDevelopers = null;
+
+            url = "https://api.github.com/search/commits?q=repo:" + repoName +
+                " author-date:2019-01-01..2019-12-31 &per_page=100";
+            const response = await fetch(url, options)
+            const result = await response.json();
+            commits2019 = result.total_count;
+
+            //2.1 second delay as github provokes Rate limits which allow me to only make 30 requests per minute.
+            // https://developer.github.com/v3/search/#rate-limit
+            if (repo < repos.length - 1) {
+                repo++;
+                populateDataRows(repositoryName, repositoryURL, repositoryActiveDevelopers);
+                setTimeout(getData,
+                2100); 
+            } else {
+                return;
+            }
+        }
+
+        // function getUniqueContributors(contributors) {
+        //     const seen = Object.create(null);
+        //     contributors.forEach(contributor => {
+        //         seen[contributor] = true;
+        //     });
+        //     const uniqueContributors = Object.keys(seen);
+        //     return uniqueContributors.length;
+        // }
+
+        function populateDataRows(repositoryName, repositoryURL, developers) {
+            dataRows.push([repositoryName, repositoryURL, developers]);
+        }
+
+        function writeRepositoryData() {
+            var csv = '';
+            dataRows.forEach(function (rowArray) {
+                let row = rowArray.join(";");
+                csv += row + "\r\n";
+            });
+
+            var hiddenElement = document.createElement('a');
+            hiddenElement.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+            hiddenElement.target = '_blank';
+            hiddenElement.download = 'name_data.csv'; //Change this depending on your search
+            hiddenElement.click();
+        }
+    </script>
+
+</body>
+
+</html>
